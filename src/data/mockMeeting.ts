@@ -60,7 +60,7 @@ export const mockMeetings: Meeting[] = [
     dateLabel: "Sep 22, 2026 · 11:00 AM",
     durationLabel: "41 min",
     category: "Engineering",
-    videoUrl: SAMPLE_VIDEOS[0],
+    videoUrl: "https://vjs.zencdn.net/v/oceans.mp4",
     attendees: [
       {
         id: "u_jordan",
