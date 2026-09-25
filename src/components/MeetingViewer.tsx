@@ -2,14 +2,17 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowLeft,
   CheckCircle2,
   Circle,
   Search,
+  Share2,
   Sparkles,
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AskFathom } from "@/components/AskFathom";
+import { ShareClipModal } from "@/components/ShareClipModal";
 import {
   getAttendee,
   mockMeeting,
@@ -25,13 +28,77 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "actions", label: "Action Items" },
 ];
 
-export function MeetingViewer({ meeting = mockMeeting }: { meeting?: Meeting }) {
+type MeetingViewerProps = {
+  meeting?: Meeting;
+  onBack?: () => void;
+};
+
+function readClipParams() {
+  if (typeof window === "undefined") {
+    return { start: null as number | null, end: null as number | null };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const startRaw = Number(params.get("t"));
+  const endRaw = Number(params.get("end"));
+  return {
+    start: Number.isFinite(startRaw) && startRaw >= 0 ? startRaw : null,
+    end: Number.isFinite(endRaw) && endRaw >= 0 ? endRaw : null,
+  };
+}
+
+export function MeetingViewer({
+  meeting = mockMeeting,
+  onBack,
+}: MeetingViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const activeCueRef = useRef<HTMLButtonElement>(null);
+  const clipEndRef = useRef<number | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [tab, setTab] = useState<TabId>("summary");
   const [query, setQuery] = useState("");
   const [askOpen, setAskOpen] = useState(true);
+  const [shareOpen, setShareOpen] = useState(false);
+
+  // Reset local viewer chrome when switching meetings.
+  useEffect(() => {
+    setTab("summary");
+    setQuery("");
+    setAskOpen(true);
+    setShareOpen(false);
+  }, [meeting.id]);
+
+  // Seek/play from ?t= / ?end= on mount and when meeting changes.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const { start, end } = readClipParams();
+    clipEndRef.current = end != null && start != null && end > start ? end : null;
+
+    const applyStart = (seconds: number) => {
+      video.currentTime = seconds;
+      setCurrentTime(seconds);
+      void video.play().catch(() => {
+        // Autoplay may be blocked until user gesture; seek still applied.
+      });
+    };
+
+    if (start == null) {
+      video.pause();
+      video.currentTime = 0;
+      setCurrentTime(0);
+      return;
+    }
+
+    const onReady = () => applyStart(start);
+
+    if (video.readyState >= 1) {
+      onReady();
+    } else {
+      video.addEventListener("loadedmetadata", onReady, { once: true });
+      return () => video.removeEventListener("loadedmetadata", onReady);
+    }
+  }, [meeting.id, meeting.videoUrl]);
 
   const activeSegmentId = useMemo(() => {
     const hit = meeting.transcript.find(
@@ -57,28 +124,54 @@ export function MeetingViewer({ meeting = mockMeeting }: { meeting?: Meeting }) 
   function seekTo(seconds: number) {
     const video = videoRef.current;
     if (!video) return;
+    clipEndRef.current = null;
     video.currentTime = seconds;
     void video.play();
     setCurrentTime(seconds);
   }
 
+  function handleTimeUpdate(time: number) {
+    setCurrentTime(time);
+    const clipEnd = clipEndRef.current;
+    const video = videoRef.current;
+    if (clipEnd != null && video && time >= clipEnd) {
+      video.pause();
+      clipEndRef.current = null;
+    }
+  }
+
   return (
     <div className="flex h-dvh flex-col bg-[#0b0f14] text-zinc-100">
-      <header className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3 md:px-6">
-        <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-teal-400/90">
-            Fathom Clone
-          </p>
-          <h1 className="truncate text-base font-semibold tracking-tight md:text-lg">
-            {meeting.title}
-          </h1>
-          <p className="text-xs text-zinc-500">
-            {meeting.dateLabel} · {meeting.durationLabel}
-          </p>
+      <header className="flex items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-3 md:px-6">
+        <div className="flex min-w-0 items-start gap-3">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Back to Meetings</span>
+              <span className="sm:hidden">Back</span>
+            </button>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-[11px] text-zinc-500">
+              <span className="font-medium text-teal-400/90">Meetings</span>
+              <span className="mx-1.5 text-zinc-700">/</span>
+              <span>{meeting.category}</span>
+            </p>
+            <h1 className="truncate text-base font-semibold tracking-tight md:text-lg">
+              {meeting.title}
+            </h1>
+            <p className="text-xs text-zinc-500">
+              {meeting.dateLabel} · {meeting.durationLabel}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden items-center -space-x-2 sm:flex">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden items-center -space-x-2 md:flex">
             {meeting.attendees.map((person) => (
               <span
                 key={person.id}
@@ -90,6 +183,14 @@ export function MeetingViewer({ meeting = mockMeeting }: { meeting?: Meeting }) 
               </span>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
+          >
+            <Share2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Share Clip</span>
+          </button>
           <button
             type="button"
             onClick={() => setAskOpen((v) => !v)}
@@ -117,16 +218,14 @@ export function MeetingViewer({ meeting = mockMeeting }: { meeting?: Meeting }) 
                 controls
                 playsInline
                 onTimeUpdate={(event) =>
-                  setCurrentTime(event.currentTarget.currentTime)
+                  handleTimeUpdate(event.currentTarget.currentTime)
                 }
               />
             </div>
 
             <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-2 text-xs text-zinc-400">
               <Users className="h-3.5 w-3.5" />
-              <span>
-                {meeting.attendees.map((a) => a.name).join(" · ")}
-              </span>
+              <span>{meeting.attendees.map((a) => a.name).join(" · ")}</span>
             </div>
 
             <div className="flex gap-1 px-3 pt-3">
@@ -297,6 +396,8 @@ export function MeetingViewer({ meeting = mockMeeting }: { meeting?: Meeting }) 
               className="hidden h-full shrink-0 overflow-hidden md:block"
             >
               <AskFathom
+                key={meeting.id}
+                meetingId={meeting.id}
                 open={askOpen}
                 onClose={() => setAskOpen(false)}
                 className="w-[380px]"
@@ -315,10 +416,23 @@ export function MeetingViewer({ meeting = mockMeeting }: { meeting?: Meeting }) 
             transition={{ type: "spring", stiffness: 340, damping: 34 }}
             className="fixed inset-x-0 bottom-0 z-40 h-[70dvh] overflow-hidden rounded-t-2xl border border-zinc-800 shadow-2xl md:hidden"
           >
-            <AskFathom open={askOpen} onClose={() => setAskOpen(false)} />
+            <AskFathom
+              key={`mobile-${meeting.id}`}
+              meetingId={meeting.id}
+              open={askOpen}
+              onClose={() => setAskOpen(false)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ShareClipModal
+        open={shareOpen}
+        meetingId={meeting.id}
+        meetingTitle={meeting.title}
+        currentTime={currentTime}
+        onClose={() => setShareOpen(false)}
+      />
     </div>
   );
 }

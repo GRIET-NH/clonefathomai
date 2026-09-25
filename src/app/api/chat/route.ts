@@ -8,12 +8,13 @@ import {
 import {
   buildMeetingSystemPrompt,
   buildSimulatedReply,
+  resolveMeeting,
 } from "@/lib/meetingContext";
+import type { Meeting } from "@/data/mockMeeting";
 
 export const maxDuration = 60;
 
 function hasAiCredentials(): boolean {
-  // Prefer Vercel AI Gateway (OIDC via `vercel env pull`, or AI_GATEWAY_API_KEY).
   return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
 }
 
@@ -31,14 +32,16 @@ function extractLastUserText(messages: UIMessage[]): string {
   return "";
 }
 
-async function simulatedStreamResponse(userText: string): Promise<Response> {
-  const reply = buildSimulatedReply(userText);
+async function simulatedStreamResponse(
+  userText: string,
+  meeting: Meeting,
+): Promise<Response> {
+  const reply = buildSimulatedReply(userText, meeting);
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       const id = "ask-fathom-sim";
       writer.write({ type: "text-start", id });
 
-      // Stream in small chunks so the UI feels live without a provider key.
       const chunkSize = 12;
       for (let i = 0; i < reply.length; i += chunkSize) {
         writer.write({
@@ -57,11 +60,16 @@ async function simulatedStreamResponse(userText: string): Promise<Response> {
 }
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
-  const system = buildMeetingSystemPrompt();
+  const {
+    messages,
+    meetingId,
+  }: { messages: UIMessage[]; meetingId?: string } = await req.json();
+
+  const meeting = resolveMeeting(meetingId);
+  const system = buildMeetingSystemPrompt(meeting);
 
   if (!hasAiCredentials()) {
-    return simulatedStreamResponse(extractLastUserText(messages));
+    return simulatedStreamResponse(extractLastUserText(messages), meeting);
   }
 
   try {
@@ -74,6 +82,6 @@ export async function POST(req: Request) {
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Ask Fathom model stream failed, using simulated reply:", error);
-    return simulatedStreamResponse(extractLastUserText(messages));
+    return simulatedStreamResponse(extractLastUserText(messages), meeting);
   }
 }

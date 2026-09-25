@@ -1,4 +1,9 @@
-import { mockMeeting, type Meeting } from "@/data/mockMeeting";
+import { getMeetingById, mockMeeting, type Meeting } from "@/data/mockMeeting";
+
+export function resolveMeeting(meetingId?: string): Meeting {
+  if (!meetingId) return mockMeeting;
+  return getMeetingById(meetingId) ?? mockMeeting;
+}
 
 export function buildMeetingSystemPrompt(meeting: Meeting = mockMeeting): string {
   const speakers = Object.fromEntries(

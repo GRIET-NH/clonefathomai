@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fathom Clone — Meeting Viewer",
-  description: "High-fidelity Fathom AI clone with Ask Fathom meeting chat",
+  title: "Fathom Clone — Meetings",
+  description: "Multi-meeting dashboard and Ask Fathom meeting viewer",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

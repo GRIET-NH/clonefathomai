@@ -16,6 +16,7 @@ const PRESET_PROMPTS = [
 type AskFathomProps = {
   open: boolean;
   onClose: () => void;
+  meetingId: string;
   className?: string;
 };
 
@@ -28,10 +29,18 @@ function messageText(
     .join("");
 }
 
-export function AskFathom({ open, onClose, className }: AskFathomProps) {
+export function AskFathom({ open, onClose, meetingId, className }: AskFathomProps) {
   const [input, setInput] = useState("");
-  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: { meetingId },
+      }),
+    [meetingId],
+  );
   const { messages, sendMessage, status, error, setMessages } = useChat({
+    id: `ask-fathom-${meetingId}`,
     transport,
   });
 
