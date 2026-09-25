@@ -139,6 +139,42 @@ export function buildSimulatedReply(
     ].join("\n");
   }
 
+  if (
+    q.includes("what is this video") ||
+    q.includes("what is this meeting") ||
+    q.includes("tell me about this") ||
+    q.includes("explain this video") ||
+    q.includes("explain this meeting") ||
+    q.includes("what are we watching") ||
+    q.includes("video summary") ||
+    q.includes("about this recording") ||
+    q.includes("about this video") ||
+    q.includes("about this meeting") ||
+    q.includes("what's this meeting") ||
+    q.includes("whats this meeting") ||
+    q.includes("what was discussed")
+  ) {
+    const attendeeList = meeting.attendees
+      .map((a) => `${a.name} (${a.role})`)
+      .join(", ");
+
+    return [
+      `**${meeting.title}**`,
+      `${meeting.dateLabel} · ${meeting.durationLabel}`,
+      "",
+      `**Who attended:** ${attendeeList}`,
+      "",
+      `**What was discussed:**`,
+      meeting.summary,
+      "",
+      `**Topics covered (${meeting.topics.length}):**`,
+      ...meeting.topics.map((t, i) => `${i + 1}. **${t.title}** — ${t.summary}`),
+      "",
+      `**Key decisions made:**`,
+      ...meeting.keyDecisions.map((d, i) => `${i + 1}. ${d}`),
+    ].join("\n");
+  }
+
   return [
     `Based on **${meeting.title}**, here's what I can pull from the recording:`,
     "",

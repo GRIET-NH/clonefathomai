@@ -5,6 +5,7 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
+import { openai } from "@ai-sdk/openai";
 import {
   buildMeetingSystemPrompt,
   buildSimulatedReply,
@@ -15,7 +16,11 @@ import type { Meeting } from "@/data/mockMeeting";
 export const maxDuration = 60;
 
 function hasAiCredentials(): boolean {
-  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
+  return Boolean(
+    process.env.OPENAI_API_KEY ||
+    process.env.AI_GATEWAY_API_KEY ||
+    process.env.VERCEL_OIDC_TOKEN
+  );
 }
 
 function extractLastUserText(messages: UIMessage[]): string {
@@ -73,8 +78,17 @@ export async function POST(req: Request) {
   }
 
   try {
+    let model;
+    
+    if (process.env.OPENAI_API_KEY) {
+      model = openai("gpt-4o-mini");
+    } else {
+      // Keep existing model behavior if using gateway or other tokens
+      model = "openai/gpt-5.4" as any;
+    }
+
     const result = streamText({
-      model: "openai/gpt-5.4",
+      model,
       system,
       messages: await convertToModelMessages(messages),
     });
