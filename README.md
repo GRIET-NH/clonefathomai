@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fathom AI Clone — Engineering Assignment
 
-## Getting Started
+## Submission Links
+- **Live Production App:** https://clonefathomai.vercel.app
+- **Public GitHub Repository:** https://github.com/arechaithanya/clonefathomai
+- **Walkthrough Video (<5 mins, Camera ON):** [INSERT_YOUR_LOOM_LINK_HERE]
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 1. Architecture & Engineering Disclosures (Built vs. Stubbed)
+As permitted by the assignment brief to prioritize product judgment and user experience within the 24-hour window:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Post-Meeting Intelligence (Built):** Real-time HTML5 video-transcript synchronization, click-to-seek timestamp navigation, active transcript line highlighting with auto-scroll, tabbed AI meeting summaries, timestamped clip creation with deep-link URL state management, and multi-meeting dashboard search.
+- **AI Chat Engine (Built):** Live streaming responses via Vercel AI SDK (`@ai-sdk/openai` + `gpt-4o-mini`) using full transcript context, with a keyword-matching streaming fallback engine when no API keys are present.
+- **Media Ingestion & Capture Layer (Stubbed):** Live WebRTC / Zoom / Google Meet bot recording is intentionally mocked using seeded meeting data to focus engineering time on post-meeting analysis, playback sync, and AI capabilities.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 2. Product Features Walkthrough
 
-## Learn More
+### 1. Multi-Meeting Dashboard & Search
+- Pre-seeded with realistic team calls (including an 8-person roadmap meeting).
+- Instant client-side search filtering across meeting titles, attendees, topic tags, and full transcript text with visual `<mark>` highlighting.
 
-To learn more about Next.js, take a look at the following resources:
+### 2. Synchronized Video & Interactive Transcript
+- Click any line in the transcript or topic under AI Summary to seek the video playerplayhead directly to that timestamp.
+- Real-time `onTimeUpdate` sync that auto-highlights and auto-scrolls the active transcript cue as the video plays.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Ask Fathom AI Assistant
+- Context-aware sidebar powered by `gpt-4o-mini` streaming responses.
+- Preset prompt pills ("What were the key decisions?", "Draft a follow-up email", "Summarize action items").
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Timestamped Share Clip Generator
+- Generates shareable URL parameters (`?meetingId=X&t=75&end=115`) that seek automatically on load and pause at the specified end time.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 3. Tech Stack
+- **Framework:** Next.js 14+ (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS + Framer Motion + Lucide Icons
+- **AI Integration:** Vercel AI SDK (`ai`, `@ai-sdk/openai`)
+- **Deployment:** Vercel
