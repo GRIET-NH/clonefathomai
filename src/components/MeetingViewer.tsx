@@ -28,6 +28,31 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "actions", label: "Action Items" },
 ];
 
+type TemplateId = "general" | "engineering" | "sales" | "one-on-one";
+
+const TEMPLATES: { id: TemplateId; label: string; sections: string[] }[] = [
+  {
+    id: "general",
+    label: "General",
+    sections: ["summary", "decisions", "topics", "questions"],
+  },
+  {
+    id: "engineering",
+    label: "Engineering Sync",
+    sections: ["summary", "decisions", "topics"],
+  },
+  {
+    id: "sales",
+    label: "Sales Call",
+    sections: ["summary", "questions", "decisions"],
+  },
+  {
+    id: "one-on-one",
+    label: "1-on-1",
+    sections: ["summary", "decisions", "questions"],
+  },
+];
+
 type MeetingViewerProps = {
   meeting?: Meeting;
   onBack?: () => void;
@@ -55,6 +80,8 @@ export function MeetingViewer({
   const clipEndRef = useRef<number | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [tab, setTab] = useState<TabId>("summary");
+  const [templateId, setTemplateId] = useState<TemplateId>("general");
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [askOpen, setAskOpen] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
@@ -62,6 +89,8 @@ export function MeetingViewer({
   // Reset local viewer chrome when switching meetings.
   useEffect(() => {
     setTab("summary");
+    setTemplateId("general");
+    setDoneIds(new Set());
     setQuery("");
     setAskOpen(true);
     setShareOpen(false);
@@ -248,54 +277,99 @@ export function MeetingViewer({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               {tab === "summary" && (
-                <div className="space-y-5">
+                <div className="space-y-4">
+                  {/* ── Template picker ── */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTemplateId(t.id)}
+                        className={cn(
+                          "rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide transition-all duration-150",
+                          templateId === t.id
+                            ? "bg-teal-600 text-white shadow-sm"
+                            : "border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200",
+                        )}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* ── Summary (always shown) ── */}
                   <p className="text-sm leading-relaxed text-zinc-300">
                     {meeting.summary}
                   </p>
 
-                  <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Key decisions
-                    </h3>
-                    <ul className="space-y-2">
-                      {meeting.keyDecisions.map((decision) => (
-                        <li
-                          key={decision}
-                          className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200"
-                        >
-                          {decision}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Topics
-                    </h3>
-                    <div className="space-y-2">
-                      {meeting.topics.map((topic) => (
-                        <button
-                          key={topic.id}
-                          type="button"
-                          onClick={() => seekTo(topic.start)}
-                          className="w-full rounded-lg border border-zinc-800 px-3 py-2 text-left transition hover:border-teal-500/40 hover:bg-teal-500/5"
-                        >
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-zinc-100">
-                              {topic.title}
-                            </span>
-                            <span className="font-mono text-[11px] text-teal-400">
-                              {formatTimestamp(topic.start)}
-                            </span>
-                          </div>
-                          <p className="text-xs leading-relaxed text-zinc-400">
-                            {topic.summary}
-                          </p>
-                        </button>
-                      ))}
+                  {/* ── Key Decisions ── */}
+                  {TEMPLATES.find((t) => t.id === templateId)!.sections.includes("decisions") && (
+                    <div>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Key decisions
+                      </h3>
+                      <ul className="space-y-2">
+                        {meeting.keyDecisions.map((decision) => (
+                          <li
+                            key={decision}
+                            className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-200"
+                          >
+                            {decision}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
+                  )}
+
+                  {/* ── Open Questions ── */}
+                  {TEMPLATES.find((t) => t.id === templateId)!.sections.includes("questions") && (
+                    <div>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Open questions
+                      </h3>
+                      <ul className="space-y-2">
+                        {meeting.openQuestions.map((q) => (
+                          <li
+                            key={q}
+                            className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm text-zinc-300"
+                          >
+                            {q}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* ── Topics ── */}
+                  {TEMPLATES.find((t) => t.id === templateId)!.sections.includes("topics") && (
+                    <div>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Topics
+                      </h3>
+                      <div className="space-y-2">
+                        {meeting.topics.map((topic) => (
+                          <button
+                            key={topic.id}
+                            type="button"
+                            onClick={() => seekTo(topic.start)}
+                            className="w-full rounded-lg border border-zinc-800 px-3 py-2 text-left transition hover:border-teal-500/40 hover:bg-teal-500/5"
+                          >
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <span className="text-sm font-medium text-zinc-100">
+                                {topic.title}
+                              </span>
+                              <span className="font-mono text-[11px] text-teal-400">
+                                {formatTimestamp(topic.start)}
+                              </span>
+                            </div>
+                            <p className="text-xs leading-relaxed text-zinc-400">
+                              {topic.summary}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -358,29 +432,60 @@ export function MeetingViewer({
               )}
 
               {tab === "actions" && (
-                <ul className="space-y-2">
-                  {meeting.actionItems.map((item) => {
-                    const owner = getAttendee(meeting, item.assigneeId);
-                    return (
-                      <li
-                        key={item.id}
-                        className="flex gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-3"
-                      >
-                        {item.done ? (
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
-                        ) : (
-                          <Circle className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-zinc-100">{item.text}</p>
-                          <p className="mt-1 text-xs text-zinc-500">
-                            {owner.name} · due {item.dueLabel}
-                          </p>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <div className="space-y-1">
+                  <p className="mb-3 text-xs text-zinc-500">
+                    <span className="font-semibold text-zinc-300">
+                      {doneIds.size}
+                    </span>{" "}
+                    of {meeting.actionItems.length} completed
+                  </p>
+                  <ul className="space-y-2">
+                    {meeting.actionItems.map((item) => {
+                      const owner = getAttendee(meeting, item.assigneeId);
+                      const isDone = doneIds.has(item.id) || item.done;
+                      return (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDoneIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(item.id)) next.delete(item.id);
+                                else next.add(item.id);
+                                return next;
+                              })
+                            }
+                            className={cn(
+                              "flex w-full gap-3 rounded-xl border px-3 py-3 text-left transition-all duration-150",
+                              isDone
+                                ? "border-teal-500/20 bg-teal-500/5"
+                                : "border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70",
+                            )}
+                          >
+                            {isDone ? (
+                              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
+                            ) : (
+                              <Circle className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={cn(
+                                  "text-sm transition-colors duration-150",
+                                  isDone ? "text-zinc-500 line-through" : "text-zinc-100",
+                                )}
+                              >
+                                {item.text}
+                              </p>
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {owner.name} · due {item.dueLabel}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
             </div>
           </section>

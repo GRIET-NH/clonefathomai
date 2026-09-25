@@ -36,8 +36,8 @@ As permitted by the assignment brief to prioritize product judgment and user exp
 ---
 
 ## 3. Tech Stack
-- **Framework:** Next.js 14+ (App Router)
+- **Framework:** Next.js 16 (App Router, Turbopack)
 - **Language:** TypeScript
-- **Styling:** Tailwind CSS + Framer Motion + Lucide Icons
-- **AI Integration:** Vercel AI SDK (`ai`, `@ai-sdk/openai`)
+- **Styling:** Tailwind CSS v4 + Framer Motion + Lucide Icons
+- **AI Integration:** Vercel AI SDK (`ai`, `@ai-sdk/openai`) — `gpt-4o-mini` when `OPENAI_API_KEY` is set, keyword-matching streaming fallback otherwise
 - **Deployment:** Vercel
